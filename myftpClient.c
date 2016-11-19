@@ -3,8 +3,8 @@
 // use ./myftpClient <port> <filename>
 int main( int argc, char **argv ) {
 	int socketfd;
+	char device[DEVICELEN];
 	struct sockaddr_in servaddr,broadaddr;
-	int result;
 
 	/* Usage information.	*/
 	if( argc != 3 ) {
@@ -17,9 +17,13 @@ int main( int argc, char **argv ) {
 	if(socketfd<0)
 		errCTL("Clinet socket error");
 		
+	/* Get NIC device name. */
+	if( getDeviceName( socketfd, device ) )
+		errCTL("Client getDeviceName error");
+		
 	/* Initial client address information. */
 	//set boradcast socket
-	if( initClientAddr(socketfd, atoi(argv[1]), "255.255.255.255", &broadaddr ) )
+	if( initClientAddr(socketfd, atoi(argv[1]), "10.255.255.255", &broadaddr ) )
 		errCTL("initClientAddr error");
 	
 	//find server 
@@ -30,7 +34,7 @@ int main( int argc, char **argv ) {
 	close(socketfd);
 	
 	/* Start ftp client */
-	if( startMyftpClient(socketfd, &servaddr, argv[2] ))
+	if( startMyftpClient(&servaddr, argv[2] ))
 		errCTL("startMyftpClient error");
 	
 	return 0;

@@ -17,3 +17,8 @@ fork
 
 struct Timeval
 >>>http://fantasymew.pixnet.net/blog/post/35048123-linux(9)-%E6%99%82%E9%96%93%E8%B3%87%E6%96%99%E7%B5%90%E6%A7%8B-timeval-%E5%92%8C-tm-%E7%9A%84%E8%BD%89%E6%8F%9B
+
+struct timeval
+>>>http:pubs.opengroup.org/onlinepubs/7908799/xsh/systime.h.html
+timeout setting
+>>>https:www.freebsd.org/cgi/man.cgi?query=setsockopt&sektion=2

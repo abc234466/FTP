@@ -1,12 +1,13 @@
 #include	"myftp.h"
 
 // use ./myftpServer <port> <filename>
-int main( int argc,char **argv ) {
+int main( int argc,char **argv ) 
+{
 	int socketfd;
 	struct stat buf;
 	struct sockaddr_in servaddr, clientaddr;
 	char device[DEVICELEN];
-	int tmpPort, port,lc;
+	int tmp_port, port,lc;
 	
 	/* Usage information. */
 	//port number : 33020
@@ -16,9 +17,6 @@ int main( int argc,char **argv ) {
 	}
 	// port we key in
 	port = atoi(argv[1]);
-	//random port
-	srand(time(NULL));
-	tmpPort = port + (rand() % 999) +1;	
 	
 	/* Check if file exist. */
 	// lstat -> get file status
@@ -34,32 +32,38 @@ int main( int argc,char **argv ) {
 
 	/* Get NIC device name. */
 	if( getDeviceName( socketfd, device ) )
-		errCTL("getDeviceName error");
+		errCTL("Server getDeviceName error");
 	
 	/* Initial server address. */
-	if( initServerAddr(socketfd, atoi(argv[1]), device, &servaddr))
+	if( initServerAddr(socketfd, port, device, &servaddr))
 		errCTL("initServerAddr error");
 	
 	printf("network interface = %s\n",device);
-	printf("network port %d\n",tmpPort);
+	printf("network port %d\n",port);
 	puts("MyFtp Server Start!!");
-
+	printf("share file : %s\n", argv[2]);
+	puts("wait client!");		
 	//Function: Server can serve multiple clients
     //Hint: Use loop, listenClient(), startMyFtpServer(), and ( fork() or thread )
+    
     
     //Process Identification
     pid_t fpid; 
     
 	while( 1 ) 
 	{
-			
-		lc = listenClient(socketfd, port, &tmpPort, argv[2], &clientaddr);
+		//random port
+		srand(time(NULL));
+		tmp_port = port + (rand() % 999) +1;
+		
+		//wait to listen client				
+		lc = listenClient(socketfd, port, tmp_port, argv[2], &clientaddr);
 		
 		if(lc <0)
 		{
 			continue;
 		}
-			
+		
 		fpid = fork();
 		
 		if(fpid < 0)
@@ -69,8 +73,11 @@ int main( int argc,char **argv ) {
 			
 		else if( fpid == 0 ) 
 		{
-					
-			startMyftpServer(tmpPort, &clientaddr , argv[2]);
+			//prepare to start ftp server
+			printf("wait client!\n");	
+			
+			startMyftpServer(tmp_port, &clientaddr , argv[2]);
+			exit(0);
 		}
 		else
 			;

@@ -18,6 +18,7 @@
 #include	<sys/stat.h>
 #include	<sys/ioctl.h>
 #include    <sys/time.h> // Define the timeval 
+#include <arpa/inet.h> // htons
 
 #define DEVICELEN	64
 #define HOSTNAME	64
@@ -54,18 +55,14 @@ int getDeviceName(int socketfd, char *device);
 int initServerAddr(int socketfd, int port, const char *device,struct sockaddr_in *servaddr);
 int initClientAddr(int socketfd, int port, char *sendClent,struct sockaddr_in *servaddr);
 int findServerAddr(int socketfd, char *filename,const struct sockaddr_in *broadaddr, struct sockaddr_in *servaddr);
-int listenClient(int socketfd, int port, int *tempPort, char *filename, struct sockaddr_in *clientaddr);
-int startMyftpServer(int tempPort, struct sockaddr_in *clientaddr, const char *filename);
-int startMyftpClient(int socketfd, struct sockaddr_in *servaddr, const char *filename);
+int listenClient(int socketfd, int port, int tmpPort, char *filename, struct sockaddr_in *clientaddr);
+int startMyftpServer( int temp_port, struct sockaddr_in *clientaddr, const char *filename );
+int startMyftpClient(struct sockaddr_in *servaddr, const char *filename);
 unsigned short in_cksum(unsigned short *addr, int len);
 
 
 //
-int Timeout(int socketfd, int sec);
-
-
-
-
+int Timeout(int socketfd, int sec, int usec);
 //
 #ifdef DEBUG
 #define debugf(fmt, args...) fprintf(stderr, fmt, ## args)
