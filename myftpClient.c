@@ -12,10 +12,6 @@ int main( int argc, char **argv ) {
 		return 0;
 	}
 	
-	//store filename 
-	bzero(&file, sizeof(struct startServerInfo));
-	strcpy(file.filename, argv[2]);
-	
 	/* Open socket.	*/
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0 );
 	if(socketfd<0)
@@ -26,7 +22,12 @@ int main( int argc, char **argv ) {
 	if( initClientAddr(socketfd, atoi(argv[1]), "255.255.255.255", &broadaddr ) )
 		errCTL("initClientAddr error");
 	
-	/*Set timeout*/
+	//find server 
+	if(findServerAddr(socketfd, argv[2], &broadaddr, &servaddr))
+		errCTL("findServerAddr error");
+		
+	//stop the broadcast socket
+	close(socketfd);
 	
 	/* Start ftp client */
 	if( startMyftpClient(socketfd, &servaddr, argv[2] ))

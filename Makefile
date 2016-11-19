@@ -7,3 +7,4 @@ ftp: $(OBJS)
 
 clean:
 	-rm ftp
+	-rm *.o

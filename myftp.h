@@ -59,6 +59,14 @@ int startMyftpServer(int tempPort, struct sockaddr_in *clientaddr, const char *f
 int startMyftpClient(int socketfd, struct sockaddr_in *servaddr, const char *filename);
 unsigned short in_cksum(unsigned short *addr, int len);
 
+
+//
+int Timeout(int socketfd, int sec);
+
+
+
+
+//
 #ifdef DEBUG
 #define debugf(fmt, args...) fprintf(stderr, fmt, ## args)
 #else
