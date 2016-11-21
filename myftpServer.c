@@ -1,53 +1,56 @@
 #include	"myftp.h"
 
 // use ./myftpServer <port> <filename>
-int main( int argc,char **argv ) 
+int main(int argc,char **argv)
 {
 	int socketfd;
 	struct stat buf;
 	struct sockaddr_in servaddr, clientaddr;
 	char device[DEVICELEN];
 	int tmp_port, port,lc;
-	
+
 	/* Usage information. */
-	//port number : 33020
-	if( argc != 3 ) {
-		printf( "usage: ./myftpServer <port> <filename>\n" );
+	//port number : 33020 , Student ID:M053040020
+	if(argc != 3)
+	{
+		printf("usage: ./myftpServer <port> <filename>\n");
 		return 0;
 	}
+
 	// port we key in
 	port = atoi(argv[1]);
 	
 	/* Check if file exist. */
 	// lstat -> get file status
-	if( lstat( argv[2], &buf ) < 0 ) {
-		printf( "unknow file : %s\n", argv[2] );
+	if(lstat(argv[2], &buf) < 0)
+	{
+		printf("unknow file : %s\n", argv[2]);
 		return 0;
 	}
-
-	/* Open socket. */
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(socketfd<0)
+	// set socket
+	if(socketfd < 0)
 		errCTL("socket error");
 
-	/* Get NIC device name. */
-	if( getDeviceName( socketfd, device ) )
+	// set device
+	if(getDeviceName( socketfd, device ) )
 		errCTL("Server getDeviceName error");
-	
+
+	printf("network interface : %s\nnetwork port : %d\n", device, atoi(argv[1]));
+
 	/* Initial server address. */
-	if( initServerAddr(socketfd, port, device, &servaddr))
+	if( initServerAddr(socketfd, port, device, &servaddr) <0)
 		errCTL("initServerAddr error");
-	
-	printf("network interface = %s\n",device);
+
+    printf("network interface = %s\n",device);
 	printf("network port %d\n",port);
 	puts("MyFtp Server Start!!");
 	printf("share file : %s\n", argv[2]);
 	puts("wait client!");		
 	//Function: Server can serve multiple clients
     //Hint: Use loop, listenClient(), startMyFtpServer(), and ( fork() or thread )
-    
-    
-    //Process Identification
+
+	//Process Identification
     pid_t fpid; 
     
 	while( 1 ) 
@@ -57,7 +60,7 @@ int main( int argc,char **argv )
 		tmp_port = port + (rand() % 999) +1;
 		
 		//wait to listen client				
-		lc = listenClient(socketfd, port, tmp_port, argv[2], &clientaddr);
+		lc = listenClient(socketfd, argv[2], &clientaddr);
 		
 		if(lc <0)
 		{

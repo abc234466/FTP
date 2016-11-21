@@ -1,14 +1,17 @@
 #include	"myftp.h"
 
 // use ./myftpClient <port> <filename>
-int main( int argc, char **argv ) {
-	int socketfd;
+int main(int argc, char **argv)
+{
+	int socketfd, port = atoi(argv[1]);
 	char device[DEVICELEN];
-	struct sockaddr_in servaddr,broadaddr;
+	struct sockaddr_in broadaddr;
+	struct startServerInfo packet;
 
 	/* Usage information.	*/
-	if( argc != 3 ) {
-		printf( "usage: ./myftpClient <port> <filename>\n" );
+	if(argc != 3)
+	{
+		printf("usage: ./myftpClient <port> <filename>\n");
 		return 0;
 	}
 	
@@ -16,30 +19,31 @@ int main( int argc, char **argv ) {
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0 );
 	if(socketfd<0)
 		errCTL("Clinet socket error");
-		
+	
 	/* Get NIC device name. */
 	if( getDeviceName( socketfd, device ) )
 		errCTL("Client getDeviceName error");
-		
+	
 	/* Initial client address information. */
-	//set boradcast socket
-	if( initClientAddr(socketfd, atoi(argv[1]), "10.255.255.255", &broadaddr ) )
+	//set boradcast socket for mininet
+	if(initCliAddr(socketfd, port, "10.255.255.255", &broadaddr))
 		errCTL("initClientAddr error");
 	
 	//WAN broadcast
 	//if( initClientAddr(socketfd, atoi(argv[1]), "255.255.255.255", &broadaddr ) )
 	//	errCTL("initClientAddr error");	
 	
-	//find server 
-	if(findServerAddr(socketfd, argv[2], &broadaddr, &servaddr))
-		errCTL("findServerAddr error");
-		
-	//stop the broadcast socket
+	// send broadcast to find server 
+	strcpy(packet.filename, argv[2]);
+	if(findServerAddr(socketfd, &broadaddr, &packet))
+		errCTL("findServerAddr");
+
+	// no more broadcast
 	close(socketfd);
-	
-	/* Start ftp client */
-	if( startMyftpClient(&servaddr, argv[2] ))
-		errCTL("startMyftpClient error");
-	
+
+	// send request and receive data
+	if(startMyftpClient(&packet))
+		errCTL("startMyftpClient");
+
 	return 0;
 }

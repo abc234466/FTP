@@ -7,22 +7,22 @@
 #include	<arpa/inet.h>
 #include	<stdlib.h>
 #include	<netdb.h>
-#include	<unistd.h>
+#include 	<unistd.h>
 #include	<netinet/in.h>
 #include	<net/if.h>
 #include	<linux/sockios.h>
 #include	<time.h>
-#include	<errno.h>
+#include 	<errno.h>
 #include	<signal.h>
 #include	<sys/select.h>
-#include	<sys/stat.h>
-#include	<sys/ioctl.h>
+#include 	<sys/stat.h>
+#include <sys/ioctl.h>
 #include    <sys/time.h> // Define the timeval 
 #include <arpa/inet.h> // htons
 
-#define DEVICELEN	64
-#define HOSTNAME	64
-#define ADDRLEN		15
+#define	DEVICELEN	64
+#define	HOSTNAME	64
+#define	ADDRLEN		15
 #define FNAMELEN	128
 #define MAXLINE		1500
 #define errCTL(x)   {perror(x); return -1;}
@@ -31,7 +31,15 @@
 #define DATA    	02		/* data packet */
 #define ACK 		03		/* acknowledgement */
 #define ERROR   	04		/* error code */
-#define MFMAXDATA	512		/* data size */
+#define	MFMAXDATA	512		/* data size */
+
+#define FRQHDRSIZE      4
+#define DATAHDRSIZE     6
+#define ACKHDRSIZE      6
+#define ERRORHDRSIZE    6
+
+char device[DEVICELEN], servIP[ADDRLEN];
+
 struct myFtphdr {
 	short mf_opcode;
 	unsigned short mf_cksum;
@@ -39,13 +47,13 @@ struct myFtphdr {
 		unsigned short  mf_block;
 		char mf_filename[1];
 	}__attribute__ ((__packed__)) mf_u;
-	char mf_data[1];
+	char mf_data[MFMAXDATA];
 }__attribute__ ((__packed__));
 
 #define mf_block	mf_u.mf_block
 #define mf_filename	mf_u.mf_filename
 
-struct startServerInfo {
+struct startServerInfo{
 	char servAddr[ADDRLEN];
 	int connectPort;
 	char filename[FNAMELEN];
@@ -53,17 +61,14 @@ struct startServerInfo {
 
 int getDeviceName(int socketfd, char *device);
 int initServerAddr(int socketfd, int port, const char *device,struct sockaddr_in *servaddr);
-int initClientAddr(int socketfd, int port, char *sendClent,struct sockaddr_in *servaddr);
-int findServerAddr(int socketfd, char *filename,const struct sockaddr_in *broadaddr, struct sockaddr_in *servaddr);
-int listenClient(int socketfd, int port, int tmpPort, char *filename, struct sockaddr_in *clientaddr);
+int initCliAddr(int socketfd, int port, char *sendClent,struct sockaddr_in *servaddr);
+int findServerAddr(int socketfd, const struct sockaddr_in *broadaddr, struct startServerInfo *find_data);
+int listenClient(int socketfd, char *filename, struct sockaddr_in *clientaddr);
 int startMyftpServer( int temp_port, struct sockaddr_in *clientaddr, const char *filename );
-int startMyftpClient(struct sockaddr_in *servaddr, const char *filename);
-unsigned short in_cksum(unsigned short *addr, int len);
+int startMyftpClient(struct startServerInfo *data);
+static unsigned short in_cksum(unsigned short *addr, unsigned int len);
+int setTimeout(int socketfd, int sec, int usec);
 
-
-//
-int Timeout(int socketfd, int sec, int usec);
-//
 #ifdef DEBUG
 #define debugf(fmt, args...) fprintf(stderr, fmt, ## args)
 #else
