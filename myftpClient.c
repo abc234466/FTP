@@ -26,6 +26,10 @@ int main( int argc, char **argv ) {
 	if( initClientAddr(socketfd, atoi(argv[1]), "10.255.255.255", &broadaddr ) )
 		errCTL("initClientAddr error");
 	
+	//WAN broadcast
+	//if( initClientAddr(socketfd, atoi(argv[1]), "255.255.255.255", &broadaddr ) )
+	//	errCTL("initClientAddr error");	
+	
 	//find server 
 	if(findServerAddr(socketfd, argv[2], &broadaddr, &servaddr))
 		errCTL("findServerAddr error");
