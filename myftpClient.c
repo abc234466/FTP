@@ -28,22 +28,24 @@ int main(int argc, char **argv)
 	//set boradcast socket for mininet
 	if(initClientAddr(socketfd, port, "10.255.255.255", &broadaddr))
 		errCTL("initClientAddr error");
+		
+	printf("network interface = %s\n",device);
 	
 	//WAN broadcast
-	//if( initClientAddr(socketfd, atoi(argv[1]), "255.255.255.255", &broadaddr ) )
+	//if( initClientAddr(socketfd, port, "255.255.255.255", &broadaddr ) )
 	//	errCTL("initClientAddr error");	
 	
 	// send broadcast to find server 
 	strcpy(packet.filename, argv[2]);
 	if(findServerAddr(socketfd, &broadaddr, &packet))
 		errCTL("findServerAddr");
-
-	// no more broadcast
+	
+	//stop the broadcast socket
 	close(socketfd);
 
 	// send request and receive data
 	if(startMyftpClient(&packet))
-		errCTL("startMyftpClient");
+		errCTL("startMyftpClient error");
 
 	return 0;
 }

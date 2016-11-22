@@ -3,11 +3,11 @@
 // use ./myftpServer <port> <filename>
 int main(int argc,char **argv)
 {
-	int socketfd;
+	int socketfd, tmp_port, port, lc;
+	char device[DEVICELEN];
 	struct stat buf;
 	struct sockaddr_in servaddr, clientaddr;
-	char device[DEVICELEN];
-	int tmp_port, port,lc;
+	
 
 	/* Usage information. */
 	//port number : 33020 , Student ID:M053040020

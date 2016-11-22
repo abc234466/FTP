@@ -1,16 +1,15 @@
 #include	"myftp.h"
-static char server_IP[20];
+static char Host_IP[20];
 int getDeviceName(int socketfd, char *device)
 {
     //Function: To get the device name
     //Hint:     Use ioctl() with SIOCGIFCONF as an arguement to get the interface list
 
-	// get device IP 
+	// get NIC information e.g. IP, interface
 	struct ifconf ifcf;
 	struct ifreq ifreqs[20], ifrq;
 	struct sockaddr_in *ifraddr;
 	int addr_inf, conf_inf;
-	
 
 	bzero(&ifcf, sizeof(ifcf));
 	ifcf.ifc_buf = (char *)(ifreqs);
@@ -28,34 +27,38 @@ int getDeviceName(int socketfd, char *device)
 		errCTL("getIFname_ioctl_SIOCGIFADDR error");
 
 	ifraddr = (struct sockaddr_in*)&ifrq.ifr_addr;
-	strcpy(server_IP, inet_ntoa(ifraddr->sin_addr));
-	printf("Host IP : %s\n",server_IP);
+	strcpy(Host_IP, inet_ntoa(ifraddr->sin_addr));
+	printf("Host IP : %s\n",Host_IP);
 	
 	return 0;
 }
 
-int initServerAddr(int socketfd, int port, const char *device,struct sockaddr_in *servaddr)
+int initServerAddr(int socketfd, int port, const char *device,struct sockaddr_in *serveraddr)
 {
     //Function: Bind device with socketfd
     //          Set sever address(struct sockaddr_in), and bind with socketfd
     //Hint:     Use setsockopt to bind the device
     //          Use bind to bind the server address(struct sockaddr_in)
 
+	int sock_server;
 	struct ifreq dev;
-
+	
+	bzero(serveraddr, sizeof(struct sockaddr_in));
+	
 	// bind device with socket
-	strcpy(dev.ifr_name, device);
+	memcpy(&dev.ifr_name, device,sizeof(dev.ifr_name));
 	if(setsockopt(socketfd, SOL_SOCKET, SO_BINDTODEVICE, &dev, sizeof(dev)) < 0)
 		errCTL("initServAddr_setsockopt");
 
-	// bind socket with address
-	bzero(servaddr, sizeof(struct sockaddr_in));
-	servaddr->sin_family = AF_INET;
-	servaddr->sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr->sin_port = htons(port);
+	// Server bind socket 
+	serveraddr->sin_family = AF_INET;
+	serveraddr->sin_port = htons(port);
+	serveraddr->sin_addr.s_addr = htonl(INADDR_ANY);
+	
 
-	if(bind(socketfd, (struct sockaddr*)servaddr, sizeof(struct sockaddr)) < 0)
-		errCTL("initServAddr_bind");
+	sock_server = bind(socketfd, (struct sockaddr*)serveraddr, sizeof(struct sockaddr));
+	if( sock_server < 0)
+		errCTL("initServAddr bind error");
 
 	return 0;
 }
@@ -65,18 +68,19 @@ int initClientAddr(int socketfd, int port, char *sendClient, struct sockaddr_in 
     //Function: Set socketfd with broadcast option and the broadcast address(struct sockaddr_in)
     //Hint:     Use setsockopt to set broadcast option
 
+	//reference : http://beej-zhtw.netdpi.net/09-man-manual/9-20-setsockopt-getsockopt
 	int opt = 1;
 	bzero(addr, sizeof(struct sockaddr_in));
+	
 	//set broadcast
 	if(setsockopt(socketfd, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) < 0)
 		errCTL("initCliAddr setsockopt error");
 
-	// Timeout 20 second
-	Timeout(socketfd, 20, 0);
-
 	// process addr
 	addr->sin_family = AF_INET;
 	addr->sin_port = htons(port);
+	
+	//reference : http://beej-zhtw.netdpi.net/09-man-manual/9-13-inet_ntoa-inet_aton-inet_addr
 	if(inet_aton(sendClient, &(addr->sin_addr)) == 0)
 		errCTL("initClientAddr inet_aton error");
 	//addr->sin_addr.s_addr = inet_addr(sendClient);
@@ -93,10 +97,10 @@ int findServerAddr(int socketfd, const struct sockaddr_in *broadaddr, struct sta
 	int sock_send, sock_recv, len = sizeof(struct sockaddr);
 	char f_name[20];
 	
-	//strcpy(f_name, );
-	printf("%s",file->filename);
 	
-	// broadcast find server
+	//printf("%s",file->filename);
+	strcpy(f_name, file->filename);
+	// broadcast to find server
 	sock_send = sendto(socketfd, file, sizeof(struct startServerInfo), 0, (struct sockaddr *)broadaddr, len);
 	if(sock_send < 0)
 		errCTL("findServerAddr sendto error");
@@ -111,6 +115,8 @@ int findServerAddr(int socketfd, const struct sockaddr_in *broadaddr, struct sta
 	 * http://beej-zhtw.netdpi.net/05-system-call-or-bust/5-8-sendto
 	 * error -> http://man7.org/linux/man-pages/man3/errno.3.html 
 	 */
+	//printf("%s",file->filename);
+	
 	if(sock_recv < 0)
 	{
 		//Resource temporarily unavailable
@@ -123,18 +129,19 @@ int findServerAddr(int socketfd, const struct sockaddr_in *broadaddr, struct sta
 	{
 		puts("[Receive Reply]");
 		
-		//Whether the file exist or not 
-		//exist
-		if((file->filename) !='\0')
+		//Whether the previous and next file match or not
+		//not exist
+		if(strcmp(file->filename, f_name)!=0)
 		{
-			printf("          Get MyftpServer servAddr : %s\n          Myftp connectPort : %d\n", file->servAddr, file->connectPort);
+			puts("     [special case]");
+			printf("          Requested file : <%s> doesn't exist\n",f_name);
+			exit(1);
 		}
 		
-		//not exist
-		else if((file->filename) =='\0')
+		//exist
+		else if((file->filename) !='\0')
 		{
-			printf("Requested file : <%s> doesn't exist",file->filename);
-			exit(1);
+			printf("          Get MyftpServer servAddr : %s\n          Myftp connectPort : %d\n", file->servAddr, file->connectPort);
 		}
 	}
 	return 0;
@@ -170,7 +177,8 @@ int listenClient(int socketfd, int tmp_port, char *filename, struct sockaddr_in 
 		//server doesn't have file
 		else
 		{
-			printf("file requested from client %s doesn't exist\n",inet_ntoa(clientaddr->sin_addr));
+			puts("     [special case]");
+			printf("           file <%s> requested from client %s doesn't exist\n",file.filename,inet_ntoa(clientaddr->sin_addr));
 			return 0;
 		}
 	}
@@ -206,7 +214,7 @@ int startMyftpServer(int port, struct sockaddr_in *clientaddr, const char *filen
 
 	// tell client server has file
 	strcpy(fileInfo.filename, filename);
-	strcpy(fileInfo.servAddr, server_IP);
+	strcpy(fileInfo.servAddr, Host_IP);
 	fileInfo.connectPort = port;
 
 	if(sendto(socketfd, &fileInfo, sizeof(fileInfo), 0, (struct sockaddr *)clientaddr, len) < 0)
@@ -243,11 +251,7 @@ int startMyftpServer(int port, struct sockaddr_in *clientaddr, const char *filen
 	unsigned short pkg;
 	unsigned long long index = 0;
 	infile = fopen(ftpPackage.mf_filename, "rb");
-	if(infile==NULL)
-	{
-		printf("file : <%s> requested from %s doesn't exist\n", ftpPackage.mf_filename, server_IP);
-        return -1;
-	}
+	
 	for(pkg = 1; !feof(infile); pkg++)
 	{
 		// check overflow
@@ -301,55 +305,58 @@ int startMyftpServer(int port, struct sockaddr_in *clientaddr, const char *filen
 	return 0;
 }
 
-int startMyftpClient(struct startServerInfo* fileInfo)
+int startMyftpClient(struct startServerInfo* file)
 {
     //Function: Get file
 
-	int socketfd, len = sizeof(struct sockaddr);
-	unsigned long block=0;
+	int socketfd, sock_recv, len = sizeof(struct sockaddr);
+	char newfile[FNAMELEN];
 	unsigned short cksum=0;
-	struct myFtphdr ftpPackage;
+	unsigned long block=0;
+	unsigned long long totalbyte = 0;
 	struct sockaddr_in servaddr;
+	struct myFtphdr ftp_packet;
 	
 
-	// create new socket
-	if((socketfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	// open socket
+	socketfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(socketfd < 0)
 		errCTL("startMyftpClient_socket");
 
 	// Timeout 20 second
 	Timeout(socketfd, 20, 0);
 
-	// send FRQ
+	// process FRQ
 	bzero(&servaddr, sizeof(struct sockaddr_in));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = inet_addr(fileInfo->servAddr);
-	servaddr.sin_port = htons(fileInfo->connectPort);
+	servaddr.sin_port = htons(file->connectPort);
+	servaddr.sin_addr.s_addr = inet_addr(file->servAddr);
+	
+	
+	//process myFtphdr , send FRQ
+	bzero(&ftp_packet, sizeof(ftp_packet));
+	ftp_packet.mf_cksum = 0;	
+	ftp_packet.mf_opcode = htons(FRQ);
+	strcpy(ftp_packet.mf_filename, file->filename);
+	ftp_packet.mf_cksum = in_cksum((unsigned short *)&ftp_packet, strlen(ftp_packet.mf_filename) + 5);
 
-	bzero(&ftpPackage, sizeof(ftpPackage));
-	ftpPackage.mf_cksum = 0;	
-	ftpPackage.mf_opcode = htons(FRQ);
-	strcpy(ftpPackage.mf_filename, fileInfo->filename);
-	ftpPackage.mf_cksum = in_cksum((unsigned short *)&ftpPackage, 4 + strlen(ftpPackage.mf_filename) + 1);
-
-	if(sendto(socketfd, &ftpPackage, 4 + strlen(ftpPackage.mf_filename) + 1, 0, (struct sockaddr *)&servaddr, len) < 0)
+	if(sendto(socketfd, &ftp_packet, strlen(ftp_packet.mf_filename) +5 , 0, (struct sockaddr *)&servaddr, len) < 0)
 		errCTL("startMyftpClient_sendto_FRQ");
 
-	// file open
-	FILE *outfile;
-	char newFilename[FNAMELEN];
-	strcpy(newFilename, "client_");
-	strcat(newFilename, fileInfo->filename);
-	int n = 0;
-	unsigned long long index = 0;
-	outfile = fopen(newFilename, "wb");
+	//process file
+	FILE *download;
+	sprintf(newfile, "client_%s",file->filename);
+	//create binary data
+	download = fopen(newfile, "wb");
 
 	// receive data and write file
-	printf("file transmission start!!\ndownload to file : <%s>\n", newFilename);
-	printf("get file <%s> form %s\n", fileInfo->filename, fileInfo->servAddr);
+	printf("[file transmission - start]\n          download to file : <%s>\n", newfile);
+	printf("          get file <%s> form %s\n", file->filename, file->servAddr);
 	while(1)
 	{
 		// receive data
-		if((n = recvfrom(socketfd, &ftpPackage, sizeof(ftpPackage), 0, (struct sockaddr *)&servaddr, &len)) < 0)
+		sock_recv = recvfrom(socketfd, &ftp_packet, sizeof(ftp_packet), 0, (struct sockaddr *)&servaddr, &len);
+		if(sock_recv < 0)
 		{
 			if(errno == EAGAIN)
 				printf("wait server time out\n");
@@ -357,48 +364,46 @@ int startMyftpClient(struct startServerInfo* fileInfo)
 			return -1;
 		}
 		
-		if(n==DATAHDRSIZE)
-		{
-			fclose(outfile);
-			printf("%llu bytes received\n", index);
-			printf("file transmission finish!!\n");
-		}
+		block = ntohs(ftp_packet.mf_block);
+		cksum=ftp_packet.mf_cksum;
+		ftp_packet.mf_cksum=0;
 		
-		block = ntohs(ftpPackage.mf_block);
-		cksum=ftpPackage.mf_cksum;
-		ftpPackage.mf_cksum=0;
-		
-		if(in_cksum((void *)&ftpPackage,n)!=cksum)
+		//check whether checksum is error or not
+		if(in_cksum((void *)&ftp_packet,sock_recv)!=cksum)
 		{
-			bzero(&ftpPackage,1024);
-            ftpPackage.mf_opcode=htons(ERROR);
-            ftpPackage.mf_cksum=0;
-            ftpPackage.mf_cksum=in_cksum((void*)&ftpPackage,ERRORHDRSIZE);
-            n=sendto(socketfd,&ftpPackage,ERRORHDRSIZE,0,(struct sockaddr *)&servaddr,len);
+			bzero(&ftp_packet,1024);
+            ftp_packet.mf_opcode=htons(ERROR);
+            ftp_packet.mf_cksum=0;
+            ftp_packet.mf_cksum=in_cksum((void*)&ftp_packet,ERRORHDRSIZE);
+            sock_recv=sendto(socketfd,&ftp_packet,ERRORHDRSIZE,0,(struct sockaddr *)&servaddr,len);
             printf("recevied data checksum error, the block is %lu\n",block);
             continue;
-		
 		}
 		
-		// calculate how many byte in receive data
-		index += (n - 6);
+		// calculate totalbyte in receive data
+		totalbyte += (sock_recv - 6);
 
 		// write file
-		fwrite(ftpPackage.mf_data, 1, n - 6, outfile);
+		fwrite(ftp_packet.mf_data, 1, sock_recv - 6, download);
 
 		// send ACK to server
-		if(n < MFMAXDATA - 6)
-			ftpPackage.mf_block = 0;
-		ftpPackage.mf_cksum = 0;
-		ftpPackage.mf_opcode = htons(ACK);
-		ftpPackage.mf_cksum = in_cksum((unsigned short *)&ftpPackage, 6);
+		if(sock_recv < MFMAXDATA - 6)
+			ftp_packet.mf_block = 0;
+		ftp_packet.mf_cksum = 0;
+		ftp_packet.mf_opcode = htons(ACK);
+		ftp_packet.mf_cksum = in_cksum((unsigned short *)&ftp_packet, 6);
 
-		if(sendto(socketfd, &ftpPackage, 6, 0, (struct sockaddr *)&servaddr, len) < 0)
+		if(sendto(socketfd, &ftp_packet, 6, 0, (struct sockaddr *)&servaddr, len) < 0)
 			errCTL("startMyftpClient_sendto_ACK");
 
 		// end for while
-		if(ftpPackage.mf_block == 0)
+		if(ftp_packet.mf_block == 0)
+		{
+			fclose(download);
+			printf("[file transmission - finish]\n");
+			printf("          %llu bytes received\n", totalbyte);
 			break;
+		}
 	}
 
 	// file close
