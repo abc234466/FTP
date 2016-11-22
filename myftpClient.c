@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 	
 	/* Initial client address information. */
 	//set boradcast socket for mininet
-	if(initCliAddr(socketfd, port, "10.255.255.255", &broadaddr))
+	if(initClientAddr(socketfd, port, "10.255.255.255", &broadaddr))
 		errCTL("initClientAddr error");
 	
 	//WAN broadcast

@@ -61,14 +61,16 @@ struct startServerInfo{
 
 int getDeviceName(int socketfd, char *device);
 int initServerAddr(int socketfd, int port, const char *device,struct sockaddr_in *servaddr);
-int initCliAddr(int socketfd, int port, char *sendClent,struct sockaddr_in *servaddr);
+int initClientAddr(int socketfd, int port, char *sendClent,struct sockaddr_in *servaddr);
 int findServerAddr(int socketfd, const struct sockaddr_in *broadaddr, struct startServerInfo *find_data);
-int listenClient(int socketfd, char *filename, struct sockaddr_in *clientaddr);
+int listenClient(int socketfd, int tmp_port, char *filename, struct sockaddr_in *clientaddr);
 int startMyftpServer( int temp_port, struct sockaddr_in *clientaddr, const char *filename );
 int startMyftpClient(struct startServerInfo *data);
 static unsigned short in_cksum(unsigned short *addr, unsigned int len);
-int setTimeout(int socketfd, int sec, int usec);
 
+//
+int Timeout(int socketfd, int sec, int usec);
+//
 #ifdef DEBUG
 #define debugf(fmt, args...) fprintf(stderr, fmt, ## args)
 #else

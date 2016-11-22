@@ -36,8 +36,6 @@ int main(int argc,char **argv)
 	if(getDeviceName( socketfd, device ) )
 		errCTL("Server getDeviceName error");
 
-	printf("network interface : %s\nnetwork port : %d\n", device, atoi(argv[1]));
-
 	/* Initial server address. */
 	if( initServerAddr(socketfd, port, device, &servaddr) <0)
 		errCTL("initServerAddr error");
@@ -46,7 +44,7 @@ int main(int argc,char **argv)
 	printf("network port %d\n",port);
 	puts("MyFtp Server Start!!");
 	printf("share file : %s\n", argv[2]);
-	puts("wait client!");		
+	
 	//Function: Server can serve multiple clients
     //Hint: Use loop, listenClient(), startMyFtpServer(), and ( fork() or thread )
 
@@ -55,12 +53,13 @@ int main(int argc,char **argv)
     
 	while( 1 ) 
 	{
+		puts("wait client!");		
 		//random port
 		srand(time(NULL));
 		tmp_port = port + (rand() % 999) +1;
 		
 		//wait to listen client				
-		lc = listenClient(socketfd, argv[2], &clientaddr);
+		lc = listenClient(socketfd, tmp_port, argv[2], &clientaddr);
 		
 		if(lc <0)
 		{
@@ -77,8 +76,6 @@ int main(int argc,char **argv)
 		else if( fpid == 0 ) 
 		{
 			//prepare to start ftp server
-			printf("wait client!\n");	
-			
 			startMyftpServer(tmp_port, &clientaddr , argv[2]);
 			exit(0);
 		}
